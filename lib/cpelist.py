@@ -36,8 +36,10 @@ class CPEList:
 
     # insert to database
     def insert(self, cpe, cpeType):
+        print ("insert-------")
         try:
             # split comments from cpe
+            print ("insert")
             comments = cpe.split('#')
             del comments[0]
             cpeID = cpe.split('#')[0]

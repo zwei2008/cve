@@ -47,6 +47,7 @@ if i is not None:
 
 data = json.loads(f.read().decode('utf-8'))
 cves = data['cves']
+cnnvd = data['cnnvd']
 bulk = [dict(val, id=key) for key, val in cves.items() if key]
 db.bulkUpdate('via4', bulk)
 db.setColInfo('via4', 'sources',     data['metadata']['sources'])

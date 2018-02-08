@@ -25,11 +25,16 @@ from lib.ProgressBar import progressbar
 from lib.Toolkit import toStringFormattedCPE
 from lib.Config import Configuration
 import lib.DatabaseLayer as db
+import lib.Zipfile as zipfile
+
+# Variables
+direction = "/root/cnnvd"
 
 # parse command line arguments
 argparser = argparse.ArgumentParser(description='populate/update the local CVE database')
 argparser.add_argument('-u', action='store_true', help='update the database')
 argparser.add_argument('-p', action='store_true', help='populate the database')
+argparser.add_argument('-cp', action='store_true', help='populate the chinese database')
 argparser.add_argument('-a', action='store_true', default=False, help='force populating the CVE database')
 argparser.add_argument('-f', help='process a local xml file')
 argparser.add_argument('-v', action='store_true', help='verbose output')
@@ -53,7 +58,6 @@ defaultvalue['cwe'] = "Unknown"
 cveStartYear = Configuration.getCVEStartYear()
 
 # define the CVE parser. Thanks to Meredith Patterson (@maradydd) for help on this one.
-
 
 class CVEHandler(ContentHandler):
     def __init__(self):
@@ -186,7 +190,34 @@ class CVEHandler(ContentHandler):
             self.inPUBElem = 0
             self.cves[-1]['Modified'] = parse_datetime(self.PUB, ignoretz=True)
 
+class CNNVDHandler(ContentHandler):
+    def __init__(self):
+        self.cnnvd = []
+        self.CVE_IDElem = 0
+
+    def startElement(self, name, attrs):
+
+        if name == 'entry':
+            self.cnnvd.append({'title': attrs.get('title')})
+            #self.ref = attrs.get('cve-id')
+            #print ("entry")
+        elif name == 'vuln-id':
+            self.CVE_IDElem = 1
+            self.CVE_ID = ""
+
+    def characters(self, ch):
+        if self.CVE_IDElem:
+            self.CVE_ID += ch
+
+    def endElement(self, name):
+        if name == 'vuln-id':
+            self.CVE_IDElem = 0
+            self.cnnvd[-1]['vuln-id'] = self.CVE_ID
+
+            
 if __name__ == '__main__':
+
+	
     parser = make_parser()
     ch = CVEHandler()
     parser.setContentHandler(ch)
@@ -265,6 +296,7 @@ if __name__ == '__main__':
                 ch = CVEHandler()
                 parser.setContentHandler(ch)
                 getfile = file_prefix + str(x) + file_suffix
+                print (getfile)
                 try:
                     (f, r) = Configuration.getFile(Configuration.getFeedURL('cve') + getfile)
                 except:
@@ -273,6 +305,9 @@ if __name__ == '__main__':
                 if args.v:
                     for item in ch.cves:
                         print(item['id'])
+                        print(item["vulnerable_configuration"])
+                        #print (len(item[]))
+                        #print(item["impact"])
                 for item in ch.cves:
                     if 'cvss' in item:
                         item['cvss'] = float(item['cvss'])
@@ -282,3 +317,39 @@ if __name__ == '__main__':
                     ret = db.insertCVE(ch.cves)
                 else:
                     print ("Year " + str(x) + " has no CVE's.")
+
+    elif args.cp:
+        # populate is pretty straight-forward, just grab all the files from NVD
+        # and dump them into a DB.
+        #判断cnnvd目录是否有压缩文件，没有压缩文件并数据库有数据，提示不更新；有压缩文件，解压缩并删除压缩文件
+        c = db.getSize('cnnvd')
+        fzip = []
+        fxml = []
+        zipfile.getZipfile(direction,fzip)
+        zipfile.listdir(direction,fxml)
+        if args.v:
+            print(str(c))
+        if c > 0 and args.a is False:
+            print("Chinese database already populated")
+        else:
+            print("Chinese Database population started")
+            for x in fxml:
+                parser = make_parser()
+                ch = CNNVDHandler()
+                parser.setContentHandler(ch)
+                parser.parse(x)
+                if args.v:
+                    for item in ch.cnnvd:
+                        print(item['cve_id'])
+                        #print (len(item[]))
+                        #print(item["impact"])
+
+                # check if year is not cve-free
+                if len(ch.cnnvd) != 0:
+                    print("Importing CNNVDs for year " + str(x))
+                    ret = db.insertCNNVD(ch.cnnvd)
+                else:
+                    print ("Year " + str(x) + " has no CVE's.")         
+                getfile = x
+                print (getfile)
+                   

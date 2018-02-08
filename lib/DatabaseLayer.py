@@ -24,6 +24,7 @@ from lib.ProgressBar import progressbar
 # Variables
 db=conf.getMongoConnection()
 colCVE=             db['cves']
+colCNNVD=           db['cnnvd']
 colCPE=             db['cpe']
 colCWE=             db['cwe']
 colCPEOTHER=        db['cpeother']
@@ -63,8 +64,13 @@ def setColInfo(collection, field, data):
   colINFO.update({"db": collection}, {"$set": {field: data}}, upsert=True)
 
 def insertCVE(cve):
+  print ("insertCVE")
   colCVE.insert(cve)
 
+def insertCNNVD(cnnvd):
+  print ("insertCNNVD")
+  colCNNVD.insert(cnnvd)
+  
 def updateCVE(cve):
   colCVE.update({"id": cve['id']}, {"$set": {"cvss": cve['cvss'], "summary": cve['summary'], "references": cve['references'],
                                              "cwe": cve['cwe'], "vulnerable_configuration": cve['vulnerable_configuration'],
