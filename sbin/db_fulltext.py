@@ -34,6 +34,7 @@ argParser.add_argument('-n', action='store_true', default=False, help='lookup co
 args = argParser.parse_args()
 
 c = cves.last(namelookup=args.n)
+cc = cnnvd.last(namelookup=args.n)
 
 indexpath = Configuration.getIndexdir()
 

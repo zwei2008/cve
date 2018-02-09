@@ -97,6 +97,12 @@ def cvesForCPE(cpe):
   if not cpe: return []
   return sanitize(colCVE.find({"vulnerable_configuration": {"$regex": cpe}}).sort("Modified", -1))
 
+# API Functions
+def cnnvdForCPE(cpe):
+  if not cpe: return []
+  return sanitize(colCNNVD.find({"vulnerable_configuration": {"$regex": cpe}}).sort("Modified", -1))
+  
+
 # User Functions
 def addUser(user, pwd, admin=False, localOnly=False):
   hashed = pbkdf2_sha256.encrypt(pwd, rounds=hash_rounds, salt_size=salt_size)
@@ -151,6 +157,20 @@ def getCVEs(limit=False, query=[], skip=0, cves=None, collection=None):
     cve=col.find({"$and": query}).sort("Modified", -1).limit(limit).skip(skip)
   return sanitize(cve)
 
+# Query Functions
+# Generic CNNVD data
+def getCNNVDs(limit=False, query=[], skip=0, cnnvd=None, collection=None):
+  col=colCNNVD if not collection else db[collection]
+  if type(query) == dict: query=[query]
+  if type(cnnvd) == list: query.append({"cve_id": {"$in": cnnvd}})
+  if len(query) == 0:
+    cnnvd=col.find().sort("Modified", -1).limit(limit).skip(skip)
+  elif len(query)  == 1:
+    cnnvd=col.find(query[0]).sort("Modified", -1).limit(limit).skip(skip)
+  else:
+    cnnvd=col.find({"$and": query}).sort("Modified", -1).limit(limit).skip(skip)
+  return sanitize(cnnvd)
+  
 def getCVEsNewerThan(dt):
   return sanitize(getCVEs(query={'last-modified': {'$gt': dt}}))
 

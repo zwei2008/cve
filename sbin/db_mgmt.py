@@ -193,27 +193,127 @@ class CVEHandler(ContentHandler):
 class CNNVDHandler(ContentHandler):
     def __init__(self):
         self.cnnvd = []
-        self.CVE_IDElem = 0
-
+        self.nameElem = 0
+        self.VULN_IDElem = 0
+        self.CVE_IDElem = 0        
+        self.publishedElem = 0
+        self.modifiedElem = 0
+        self.severityElem = 0
+        self.vuln_typeElem = 0
+        self.thrtypeElem = 0
+        self.descriptElem = 0
+        self.ref_sourceElem = 0
+        self.ref_urlElem = 0
+        self.vuln_solutionElem = 0        
+        
     def startElement(self, name, attrs):
 
         if name == 'entry':
-            self.cnnvd.append({'title': attrs.get('title')})
+            self.cnnvd.append({ 'vulnerable_configuration': [] })
             #self.ref = attrs.get('cve-id')
             #print ("entry")
+        elif name == 'cncpe-lang':
+            self.cnnvd[-1]['vulnerable_configuration'].append(toStringFormattedCPE(attrs.get('name')))            
         elif name == 'vuln-id':
+            self.VULN_IDElem = 1
+            self.VULN_IDE = ""
+        elif name == 'name':
+            self.nameElem = 1
+            self.name = ""            
+        elif name == 'published':
+            self.publishedElem = 1
+            self.published = ""
+        elif name == 'modified':
+            self.modifiedElem = 1
+            self.modified = ""
+        elif name == 'severity':
+            self.severityElem = 1
+            self.severity = ""
+        elif name == 'vuln-type':
+            self.vuln_typeElem = 1
+            self.vuln_type = ""
+        elif name == 'thrtype':
+            self.thrtypeElem = 1
+            self.thrtype = ""
+        elif name == 'descript':
+            self.descriptElem = 1
+            self.descript = ""
+        elif name == 'cve-id':
             self.CVE_IDElem = 1
             self.CVE_ID = ""
-
+        elif name == 'ref-source':
+            self.ref_sourceElem = 1
+            self.ref_source = ""
+        elif name == 'ref-url':
+            self.ref_urllem = 1
+            self.ref_url = ""
+        elif name == 'vuln-solution':
+            self.vuln_solutionElem = 1
+            self.vuln_solution = ""
+            
     def characters(self, ch):
+        if self.VULN_IDElem:
+            self.VULN_IDE += ch
+        if self.publishedElem:
+            self.published += ch
+        if self.modifiedElem:
+            self.modified += ch
+        if self.severityElem:
+            self.severity += ch
+        if self.vuln_typeElem:
+            self.vuln_type += ch
+        if self.thrtypeElem:
+            self.thrtype += ch
+        if self.descriptElem:
+            self.descript += ch
         if self.CVE_IDElem:
             self.CVE_ID += ch
-
+        if self.ref_sourceElem:
+            self.ref_source += ch
+        if self.ref_urlElem:
+            self.ref_url += ch
+        if self.vuln_solutionElem:
+            self.vuln_solution += ch    
+        if self.nameElem:
+            self.name += ch   
+            
     def endElement(self, name):
         if name == 'vuln-id':
+            self.VULN_IDElem = 0
+            self.cnnvd[-1]['vuln_id'] = self.VULN_IDE
+        if name == 'published':
+            self.publishedElem = 0
+            self.cnnvd[-1]['published'] = self.published
+        if name == 'modified':
+            self.modifiedElem = 0
+            self.cnnvd[-1]['modified'] = self.modified
+        if name == 'severity':
+            self.severitylem = 0
+            self.cnnvd[-1]['severity'] = self.severity
+        if name == 'vuln-type':
+            self.vuln_typeElem = 0
+            self.cnnvd[-1]['vuln_type'] = self.vuln_type           
+        if name == 'thrtype':
+            self.thrtypeElem = 0
+            self.cnnvd[-1]['thrtype'] = self.thrtype
+        if name == 'descript':
+            self.descriptElem = 0
+            self.cnnvd[-1]['descript'] = self.descript
+        if name == 'cve-id':
             self.CVE_IDElem = 0
-            self.cnnvd[-1]['vuln-id'] = self.CVE_ID
-
+            self.cnnvd[-1]['cve_id'] = self.CVE_ID
+        if name == 'ref-source':
+            self.ref_sourceElem = 0
+            self.cnnvd[-1]['ref_source'] = self.ref_source
+        if name == 'ref-url':
+            self.ref_urlElem = 0
+            self.cnnvd[-1]['ref_url'] = self.ref_url   
+        if name == 'vuln-solution':
+            self.vuln_solutionElem = 0
+            self.cnnvd[-1]['vuln_solution'] = self.vuln_solution            
+        if name == 'name':
+            self.nameElem = 0
+            self.cnnvd[-1]['name'] = self.name         
             
 if __name__ == '__main__':
 

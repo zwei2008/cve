@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # search is the search component of cve-search querying the MongoDB database.
 #
@@ -45,8 +46,10 @@ summary_text = ""
 # parse command-line arguments
 argParser = argparse.ArgumentParser(description='Search for vulnerabilities in the National Vulnerability DB. Data from http://nvd.nist.org.')
 argParser.add_argument('-p', type=str, help='S = search product, e.g. o:microsoft:windows_7 or o:cisco:ios:12.1')
+argParser.add_argument('-cp', type=str, help='S = search product from cnnvd, e.g. o:microsoft:windows_7 or o:cisco:ios:12.1')
 argParser.add_argument('-f', type=str, help='F = free text search in vulnerability summary')
 argParser.add_argument('-c', action='append', help='search one or more CVE-ID')
+argParser.add_argument('-cc', action='append', help='search one or more CVE-ID from cnnvd')
 argParser.add_argument('-o', type=str, help='O = output format [csv|html|json|xml|cveid]')
 argParser.add_argument('-l', action='store_true', help='sort in descending mode')
 argParser.add_argument('-n', action='store_true', help='lookup complete cpe (Common Platform Enumeration) name for vulnerable configuration')
@@ -59,7 +62,9 @@ argParser.add_argument('-i', default=False, type=int, help='Limit output to n el
 args = argParser.parse_args()
 
 vSearch = args.p
+vnSearch = args.cp
 cveSearch = [x.upper() for x in args.c] if args.c else None
+cnnvdSearch = [x.upper() for x in args.cc] if args.cc else None
 vOutput = args.o
 vFreeSearch = args.f
 sLatest = args.l
@@ -259,6 +264,36 @@ def printCVE_human(item):
                     print( i + ": " + str(e[i]))
     print("\n\n")
 
+def printCNNVD_human(item):
+    print("name\t: " + item['name'])
+    print("CVE\t: " + item['cve_id'])
+    print("CNNVD\t: " + item['vuln_id'])
+    print("DATE\t: " + str(item['published']))
+    print("severity\t: " + str(item['severity']))
+    print("-------------------")    
+    print(item['vuln_solution'])
+    print("\nVulnerable Configs:")
+    print("-------------------")
+    ranking=[]
+    for entry in item['vulnerable_configuration']:
+        
+        if not namelookup:
+            print(entry)
+        else:
+            print(cves.getcpe(cpeid=entry))
+        if rankinglookup:
+            rank = cves.getranking(cpeid=entry)
+            if rank and rank not in ranking:
+                    ranking.append(rank)
+    if rankinglookup:
+        print("\nRanking: ")
+        print("--------")
+        for ra in ranking:
+            for e in ra:
+                for i in e: 
+                    print( i + ": " + str(e[i]))
+    print("\n\n")
+    
 # Search in summary text
 def search_in_summary(item):
      print(item['summary'])
@@ -287,6 +322,15 @@ if cveSearch:
         print("</body></html>")
     sys.exit(0)
 
+if cnnvdSearch:
+    for item in db.getCNNVDs(cnnvd=cnnvdSearch):
+        printCNNVD_human(item)
+
+
+    if htmlOutput:
+        print("</body></html>")
+    sys.exit(0)
+    
 # Basic freetext search (in vulnerability summary).
 # Full-text indexing is more efficient to search across all CVEs.
 if vFreeSearch:
@@ -339,6 +383,34 @@ if vSearch:
         print("</body></html>")
     sys.exit(0)
 
+# Search Product (best to use CPE notation, e.g. cisco:ios:12.2
+if vnSearch:
+
+    for item in db.cnnvdForCPE(vnSearch):
+        if not last_ndays:
+            printCNNVD_human(item)
+        else:
+            date_n_days_ago = datetime.now() - timedelta(days=last_ndays)
+            if item['Published'] > date_n_days_ago: 
+
+                    if csvOutput:
+                        printCVE_csv(item)
+                    elif htmlOutput:
+                        printCVE_html(item)
+                    # bson straight from the MongoDB db - converted to JSON default
+                    # representation
+                    elif jsonOutput:
+                        printCVE_json(item)
+                    elif xmlOutput:
+                        printCVE_xml(item)
+                    elif cveidOutput:
+                        printCVE_id(item)
+                    else:
+                        printCVE_human(item)
+    if htmlOutput:
+        print("</body></html>")
+    sys.exit(0)
+    
 # Search text in summary 
 if summary_text:
     import lib.CVEs as cves
